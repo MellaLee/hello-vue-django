@@ -49,6 +49,14 @@ module.exports = {
                 options: {
                     name: '[name].[ext]?[hash]'
                 }
+            },
+            {
+                test: /\.(css|less)$/,
+                loader: "vue-style-loader!css-loader",
+            },
+            {
+                test:  /\.(woff2?|eot|ttf|otf)(\?.*)?$/,
+                loader: "file-loader"
             }
         ]
     },
