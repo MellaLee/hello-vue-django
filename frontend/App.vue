@@ -16,13 +16,13 @@
                             <el-container style="height:400px">
                                 <el-main>
                                     <div v-if="!active">
-                                        输出以用户为单位，七天内对某域名访问的数据集
+                                        Purpose: 输出以用户为单位，七天内对某域名访问的数据集
+                                        <el-upload drag :action="uploadUrl" multiple :headers="{'X-CSRFToken': csrfToken}">
+                                            <i class="el-icon-upload"></i>
+                                            <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
+                                            <div class="el-upload__tip" slot="tip">只能上传excel文件</div>
+                                        </el-upload>
                                     </div>
-                                    <el-upload v-else-if="active == 1" drag :action="uploadUrl" multiple :headers="{'X-CSRFToken': csrfToken}">
-                                        <i class="el-icon-upload"></i>
-                                        <div class="el-upload__text">将文件拖到此处，或<em>点击上传</em></div>
-                                        <div class="el-upload__tip" slot="tip">只能上传excel文件</div>
-                                    </el-upload>
                                 </el-main>
                                 <el-footer>
                                     <el-button-group style="float:right">
