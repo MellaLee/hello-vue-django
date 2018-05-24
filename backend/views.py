@@ -7,11 +7,26 @@ import re
 import time, datetime 
 from backendModels.models import UrlLog, User
 
+import pandas as pd
+
 def index(request):
     return render(request, 'index.html')
 
+
 @csrf_protect
 def uploadUrlLog(request):
+    if request.method == 'POST':
+        fname = request.FILES.get('file')
+        if fname:
+            file = open('static/upload/' + fname.name, 'wb')
+            for chunk in fname.chunks():
+                file.write(chunk)
+            file.close()
+            return HttpResponse('OK')
+
+
+@csrf_protect
+def uploadUrlLogOld(request):
     if request.method == 'POST':
         fileName = request.FILES.get('file')
         invalidData = 0
