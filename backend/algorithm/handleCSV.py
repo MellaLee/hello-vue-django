@@ -43,7 +43,8 @@ def startQuantitative(i, dateMin, dateMax, groups, userId):
                     url=domain,
                     urlSimilarOriginSeries=groupDf.values,
                     user_id = userId,
-                    similar=eucDistance
+                    similarEuc=eucDistance,
+                    similarStd=np.std(groupDf.values)
                 ))
                 #valuesT = values.reshape(-1, 1)
                 #eucDistance = calEuclidean(values, valuesT)
@@ -53,7 +54,7 @@ def startQuantitative(i, dateMin, dateMax, groups, userId):
 def findBestInterval(dateMin, dateMax, groups, userId):
     oldRatio = 1 
     interval = 0
-    for i in range(10, 20, 10): 
+    for i in range(20, 30, 10): 
         notStat, totalSize = startQuantitative(i, dateMin, dateMax, groups, userId)
         if (notStat / totalSize < oldRatio):
             oldRatio = notStat / totalSize

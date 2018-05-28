@@ -15,7 +15,8 @@ class UrlLog(models.Model):
 class  QuantitativeLog(models.Model):
     user = models.ForeignKey(User)
     url = models.CharField(default=0x02, max_length = 100)
-    similar = models.FloatField(default=0x00)
+    similarEuc = models.FloatField(default=0x00)
+    similarStd = models.FloatField(default=0x00)
     urlSimilarOriginSeries = models.TextField(null=True)
     urlArgsEntropy = models.FloatField(default=0x00)
     abnormalTimeProbability = models.FloatField(default=0x00)
