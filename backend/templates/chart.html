@@ -1,0 +1,50 @@
+<!doctype html>
+{% load render_bundle from webpack_loader %}
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <script src="/static/js/echarts.common.min.js"></script>
+    <title>图表分析</title>
+</head>
+<body>
+    {% for url,data in series.items%}
+        <div id={{ url }} style="height:400px"></div>
+    {% endfor%}
+
+    <script src="http://apps.bdimg.com/libs/jquery/1.11.1/jquery.min.js"></script>
+    <script type="text/javascript">
+            $(document).ready(function () {
+                var series = {{ series|safe }};
+                    for (var url in series) {
+                        var myChart = echarts.init(document.getElementById(url));
+
+                        var option = {
+                            title: {
+                                text: url + '访问次数统计'
+                            },
+                            dataZoom: [{
+                                type: 'slider',
+                                start: 20,
+                                end: 60
+                            }],
+                            tooltip: {},
+                            legend: {
+                                data: ['访问次数']
+                            },
+                            xAxis: {
+                                data: series[url].x
+                            },
+                            yAxis: {},
+                            series: [{
+                                name: '访问次数',
+                                type: 'bar',
+                                data: series[url].y
+                            }]
+                        };
+
+                        myChart.setOption(option);
+                    }
+            });
+    </script>
+</body>
+</html>

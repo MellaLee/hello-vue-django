@@ -22,7 +22,8 @@ import backend.views
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^$', backend.views.index),
-    url(r'^api/upload/url_log', backend.views.uploadUrlLog)
+    url(r'^api/upload/url_log', backend.views.uploadUrlLog),
+    url(r'^api/chart/show', backend.views.chartShow)
 ]
 
 if settings.DEBUG:

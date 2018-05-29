@@ -1,23 +1,28 @@
 import os
 from django.shortcuts import render
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_protect
 
 import re
+import json
 import time, datetime 
-from backendModels.models import UrlLog, User
+import numpy as np
+from backendModels.models import UrlLog, User, QuantitativeLog
 
 import pandas as pd
 
 def index(request):
     return render(request, 'index.html')
 
-
 @csrf_protect
 def uploadUrlLog(request):
     if request.method == 'POST':
         fname = request.FILES.get('file')
         if fname:
+            user, created = User.objects.get_or_create(
+                userNo=fname.name.split('.')[0].split('-')[1])
+            if (created):
+                user.save()
             file = open('static/upload/' + fname.name, 'wb')
             for chunk in fname.chunks():
                 file.write(chunk)
@@ -52,3 +57,13 @@ def uploadUrlLogOld(request):
                     invalidData += 1
             print ('无效数据共', invalidData , '条.')
             return HttpResponse('OK')
+
+def chartShow(request):
+    series = {}
+    for item in QuantitativeLog.objects.order_by('-similarEuc')[:10]:
+       series[item.url] = {
+           'x': json.loads(item.timeSeries),
+           'y': json.loads(item.urlSimilarOriginSeries)
+       }
+        
+    return render(request, 'chart.html', {'series': series})

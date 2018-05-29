@@ -18,6 +18,7 @@ class  QuantitativeLog(models.Model):
     similarEuc = models.FloatField(default=0x00)
     similarStd = models.FloatField(default=0x00)
     urlSimilarOriginSeries = models.TextField(null=True)
+    timeSeries = models.TextField(null=True)
     urlArgsEntropy = models.FloatField(default=0x00)
     abnormalTimeProbability = models.FloatField(default=0x00)
     sameArgsDiversity = models.FloatField(default=0x00)

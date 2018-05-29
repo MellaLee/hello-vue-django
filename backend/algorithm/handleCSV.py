@@ -1,4 +1,5 @@
 import os
+import json
 import pandas as pd
 import numpy as np
 from scipy.spatial import distance
@@ -39,22 +40,28 @@ def startQuantitative(i, dateMin, dateMax, groups, userId):
                         eucDistance += distance.euclidean(oldValue, value)
                     oldValue = value
                         
+                pydate_array = groupDf.index.to_pydatetime()
+                date_only_array = np.vectorize(lambda s: s.strftime('%m-%d %H:%M'))(pydate_array )
                 quantitativeLogList.append(QuantitativeLog(
                     url=domain,
-                    urlSimilarOriginSeries=groupDf.values,
+                    urlSimilarOriginSeries=json.dumps((groupDf.values).tolist()),
+                    timeSeries=json.dumps((date_only_array).tolist()),
                     user_id = userId,
                     similarEuc=eucDistance,
-                    similarStd=np.std(groupDf.values)
+                    similarStd=np.std(groupDf.values)/np.mean(groupDf.values)
                 ))
                 #valuesT = values.reshape(-1, 1)
                 #eucDistance = calEuclidean(values, valuesT)
-    QuantitativeLog.objects.bulk_create(quantitativeLogList)
+    QuantitativeLog.objects.all().delete()
+    for i in range(0, len(quantitativeLogList), 200):
+        QuantitativeLog.objects.bulk_create(quantitativeLogList[i:i + 200])
     return notStat, totalSize
 
 def findBestInterval(dateMin, dateMax, groups, userId):
     oldRatio = 1 
     interval = 0
-    for i in range(20, 30, 10): 
+    for i in range(10, 20, 10): 
+        print (i)
         notStat, totalSize = startQuantitative(i, dateMin, dateMax, groups, userId)
         if (notStat / totalSize < oldRatio):
             oldRatio = notStat / totalSize
