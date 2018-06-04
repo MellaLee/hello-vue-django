@@ -23,3 +23,9 @@ class  QuantitativeLog(models.Model):
     abnormalTimeProbability = models.FloatField(default=0x00)
     sameArgsDiversity = models.FloatField(default=0x00)
     webClassify = models.IntegerField(default=0x00)
+
+class UrlArgsTestMethod(models.Model):
+    url = models.CharField(default=0x02, max_length = 100)
+    args = models.TextField(null=True)
+    method1 = models.TextField(null=True)
+    method2 = models.TextField(null=True)

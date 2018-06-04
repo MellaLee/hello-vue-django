@@ -30,6 +30,12 @@ make prod
 make build
 ```
 
+### 运行方法——2018.06.04
+1. 网页上传csv文件，文件命名方式为“name-学号”
+2. backend/algorithm下执行：
+    python run.py first 跑第一个特征
+	python run.py second 跑第二个特征
+
 ### Be aware
 
 For the sake of simplicity Django config is contained within its own backend app. In real world setting you would

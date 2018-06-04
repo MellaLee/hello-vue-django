@@ -2,7 +2,12 @@ import os
 import json
 import pandas as pd
 import numpy as np
+import Levenshtein
+import scipy
+import matplotlib.pyplot as plt
 from scipy.spatial import distance
+import scipy.cluster.hierarchy as sch
+import scipy.stats as ss
 
 import testStationarity as draw
 # just for importing models of django
@@ -11,11 +16,11 @@ import django
 sys.path.append("../..")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
 django.setup()
-from backendModels.models import User, QuantitativeLog 
+from backendModels.models import User, QuantitativeLog, UrlArgsTestMethod 
 
 csv_file_path = r'D:\GraduationThesis\graduation-code\hello-vue-django\static/upload/' 
 # TODO: choose a right var interval
-# interval = '25T' 
+# interval = '10T' 
 safeCheckTimes = 4 
 
 def startQuantitative(i, dateMin, dateMax, groups, userId):
@@ -42,13 +47,14 @@ def startQuantitative(i, dateMin, dateMax, groups, userId):
                         
                 pydate_array = groupDf.index.to_pydatetime()
                 date_only_array = np.vectorize(lambda s: s.strftime('%m-%d %H:%M'))(pydate_array )
+                #cal urlargsEntropy
+
                 quantitativeLogList.append(QuantitativeLog(
                     url=domain,
                     urlSimilarOriginSeries=json.dumps((groupDf.values).tolist()),
                     timeSeries=json.dumps((date_only_array).tolist()),
                     user_id = userId,
                     similarEuc=eucDistance,
-                    similarStd=np.std(groupDf.values)/np.mean(groupDf.values)
                 ))
                 #valuesT = values.reshape(-1, 1)
                 #eucDistance = calEuclidean(values, valuesT)
@@ -60,23 +66,80 @@ def startQuantitative(i, dateMin, dateMax, groups, userId):
 def findBestInterval(dateMin, dateMax, groups, userId):
     oldRatio = 1 
     interval = 0
-    for i in range(10, 20, 10): 
-        print (i)
-        notStat, totalSize = startQuantitative(i, dateMin, dateMax, groups, userId)
+    for i in range(10, 20, 10):
+        notStat, totalSize = startQuantitative(
+            i, dateMin, dateMax, groups, userId)
         if (notStat / totalSize < oldRatio):
             oldRatio = notStat / totalSize
-            interval = i 
+            interval = i
         print("failed:", i, oldRatio)
+
+def startCalUrlArgsEntropy(urlArgs, userId):
+    urlArgsList = []
+    for domain, args in urlArgs:
+        argsValues = args.values
+        lastArgs = 0
+        total = 0
+        for args in argsValues:
+            if (lastArgs != 0):
+                total += similarUrlAgrs(lastArgs, args[0])
+            else:
+                lastArgs = args[0]
+        # calculate entropy
+        hierarchyDisMat = sch.distance.pdist(argsValues, lambda str1, str2:  1 - similarUrlAgrs(str1[0], str2[0]))
+        if (len(hierarchyDisMat) == 0):
+            method2 = 0
+        else:
+            Z = sch.linkage(hierarchyDisMat, method='average')
+            hierarchyRes = sch.fcluster(Z, 0.1) 
+            unique, counts = np.unique(hierarchyRes, return_counts=True)
+            method2=ss.entropy(counts)
+
+        QuantitativeLog.objects.filter(user_id=userId, url=domain).update(urlArgsEntropy=method2)
+
+#        urlArgsList.append(UrlArgsTestMethod(
+#            url=domain,
+#            args=argsValues,
+#            method1=total / len(argsValues),
+#            method2=method2
+#        ))
+#    UrlArgsTestMethod.objects.all().delete()
+#    for i in range(0, len(urlArgsList), 200):
+#        UrlArgsTestMethod.objects.bulk_create(urlArgsList[i:i + 200])
+
+def find_lcsubstr(s1, s2):   
+    m=[[0 for i in range(len(s2)+1)]  for j in range(len(s1)+1)]  #生成0矩阵，为方便后续计算，比字符串长度多了一列  
+    mmax=0   #最长匹配的长度  
+    p=0  #最长匹配对应在s1中的最后一位  
+    for i in range(len(s1)):  
+        for j in range(len(s2)):  
+            if s1[i]==s2[j]:  
+                m[i+1][j+1]=m[i][j]+1  
+                if m[i+1][j+1]>mmax:  
+                    mmax=m[i+1][j+1]  
+                    p=i+1  
+    #return s1[p-mmax:p],mmax   #返回最长子串及其长度  
+    return mmax   #返回最长子串及其长度  
+
+def similarUrlAgrs(str1, str2):
+    lcs=find_lcsubstr(str1, str2)  
+    ld=Levenshtein.distance(str1, str2)
+    return (lcs / (ld + lcs))
 
 def readCsv(filename):
     df = pd.read_csv(filename, header=None, encoding='gbk', index_col=7, low_memory=False)
     df.index = pd.to_datetime(df.index)
-    userId = User.objects.get(userNo=df[0].iloc[0]).id
-    ts = df[4]
-    dateMin = ts.index.min()
-    dateMax = ts.index.max()
-    # group by domain name
-    findBestInterval(dateMin, dateMax, ts.groupby(df[4]), userId)
+    userId = User.objects.get(userNo=filename.split('.')[0].split('-')[1]).id
+    args = sys.argv
+    if (args[1] == 'first'):
+        ts = df[4]
+        dateMin = ts.index.min()
+        dateMax = ts.index.max()
+        # group by domain name
+        findBestInterval(dateMin, dateMax, ts.groupby(df[4]), userId)
+    elif (args[1] == 'second'):
+        urlArgs = df.loc[:, [6]].groupby(df[4])
+        startCalUrlArgsEntropy(urlArgs, userId)
 
 def startRun():
     os.chdir(csv_file_path)
