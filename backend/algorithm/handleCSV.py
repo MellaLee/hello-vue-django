@@ -140,6 +140,24 @@ def readCsv(filename):
     elif (args[1] == 'second'):
         urlArgs = df.loc[:, [6]].groupby(df[4])
         startCalUrlArgsEntropy(urlArgs, userId)
+    elif (args[1] == 'psd'):
+        ts = df[4]
+        dateMin = ts.index.min()
+        dateMax = ts.index.max()
+        dates = pd.date_range(dateMin, dateMax, freq='10T')
+        newTs = pd.Series(0, index=dates)
+
+        for domain, groupDf in ts.groupby(df[4]):
+            groupDf = pd.concat([newTs, groupDf.apply(revalue)]).resample('10T').sum()
+            hour = groupDf.index.hour
+            groupDf = groupDf[(1 <= hour) & (hour <= 5)]
+            sampRat = len(groupDf) 
+            T = 1 
+            f = np.linspace(0, sampRat, T*sampRat, endpoint=False)  
+            ff = np.fft.fft(groupDf)  
+            ff = np.abs(ff)  
+            ff = ff*2/sampRat/T 
+            QuantitativeLog.objects.filter(user_id=userId, url=domain).update(abnormalTimeProbability=np.std(ff))
 
 def startRun():
     os.chdir(csv_file_path)
