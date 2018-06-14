@@ -7,13 +7,13 @@ class User(models.Model):
     ip = models.CharField(null=True, max_length = 100)
 
 class UrlLog(models.Model):
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     url = models.CharField(default=0x02, max_length = 100)
     urlArgs = models.TextField(null=True)
     time = models.DateTimeField()
 
 class  QuantitativeLog(models.Model):
-    user = models.ForeignKey(User)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     url = models.CharField(default=0x02, max_length = 100)
     similarEuc = models.FloatField(default=0x00)
     urlArgsEntropy = models.FloatField(default=0x00)
