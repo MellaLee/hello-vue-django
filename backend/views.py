@@ -1,7 +1,7 @@
 import os
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_exempt
 
 import re
 import json
@@ -14,7 +14,7 @@ import pandas as pd
 def index(request):
     return render(request, 'index.html')
 
-@csrf_protect
+@csrf_exempt
 def uploadUrlLog(request):
     if request.method == 'POST':
         fname = request.FILES.get('file')
@@ -30,7 +30,7 @@ def uploadUrlLog(request):
             return HttpResponse('OK')
 
 
-@csrf_protect
+@csrf_exempt
 def uploadUrlLogOld(request):
     if request.method == 'POST':
         fileName = request.FILES.get('file')

@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import pandas as pd
 import numpy as np
@@ -8,6 +9,8 @@ import matplotlib.pyplot as plt
 from scipy.spatial import distance
 import scipy.cluster.hierarchy as sch
 import scipy.stats as ss
+from sklearn.datasets.samples_generator import make_blobs
+from sklearn.mixture import GMM
 
 import testStationarity as draw
 # just for importing models of django
@@ -127,43 +130,97 @@ def similarUrlAgrs(str1, str2):
     return (lcs / (ld + lcs))
 
 def readCsv(filename):
-    df = pd.read_csv(filename, header=None, encoding='gbk', index_col=7, low_memory=False)
-    df.index = pd.to_datetime(df.index)
     userId = User.objects.get(userNo=filename.split('.')[0].split('-')[1]).id
     args = sys.argv
-    if (args[1] == 'first'):
-        ts = df[4]
-        dateMin = ts.index.min()
-        dateMax = ts.index.max()
-        # group by domain name
-        findBestInterval(dateMin, dateMax, ts.groupby(df[4]), userId)
-    elif (args[1] == 'second'):
-        urlArgs = df.loc[:, [6]].groupby(df[4])
-        startCalUrlArgsEntropy(urlArgs, userId)
-    elif (args[1] == 'psd'):
-        ts = df[4]
-        dateMin = ts.index.min()
-        dateMax = ts.index.max()
-        dates = pd.date_range(dateMin, dateMax, freq='10T')
-        newTs = pd.Series(0, index=dates)
+    if (args[1] == 'sameArgsDiversity'):
+        df = pd.read_csv(filename, header=None, encoding='gbk', index_col=7, low_memory=False)
+        DEVICE_LIST = ['clientType', 'sOsType', 'sver', 'mo', 'ta_tn', 'platform_name', 'brand', 'client', 'ctype', 'deviceName', 
+        'fr', 'sysname', 'ua_model', 'plf', 'atsp', 'mt', 'dt', 'phoneModel', 'hw', 'secure_p', 'cpu', 'machine', 'user_client', 
+        'ver', 'deviceType', 'dname', '_device', '__os__', 'sv', 'phone_model', 'pf_ex', 'bdsv', 'client_type', 'wm_ctype', 
+        'share_medium', 'devicetype', 'ch', '_dev', 'msg', 'systemName', 'dm', 'result8', 'tn', 'channel', 'brand_type', 
+        'sys_ver_type', 'device_type', '_appid', 'device', 'word', 'dsp', 'mn', 'cad[device_model]', 'snapid', 'device_platform', 
+        'clientOs', 'hwtype', 'deviceModel', 'dev', 'mod', 'pn', 'Os', 'dspName', 'phoneos', 'pid', 'result', 'devtype', 'ism', 
+        'term', 'category', 'dev_ua', 'PHONEMODEL', 'device_name', 'md', 'modelName', '_platform', 'result9', 'dev_model', 
+        'userDeviceModel', 'hm', 'plat', 'os', 'wm_dtype', 'devicename', 'manufacturer', 'mfov', 'pv', 'os_name', 'name', 'ua', 
+        'ex3', 'phonebrand', 'facturer', 'iphonetype', 'version', 'submodel', 'mb', 'firstChannel', 'mobi_app', 'platform', 
+        'result7', 'device_model', 'hv', 'iosModel', 'model', 'pm', 'up', 'pf', 'utm_medium', 'mxh', 'location', 'c_device', 
+        'cl', 'DeviceModel', 'deviceinfo', 'device_version', 'mi', 'os_info', 'result5', 'useragent']
 
-        for domain, groupDf in ts.groupby(df[4]):
-            groupDf = pd.concat([newTs, groupDf.apply(revalue)]).resample('10T').sum()
-            hour = groupDf.index.hour
-            groupDf = groupDf[(1 <= hour) & (hour <= 5)]
-            sampRat = len(groupDf) 
-            T = 1 
-            f = np.linspace(0, sampRat, T*sampRat, endpoint=False)  
-            ff = np.fft.fft(groupDf)  
-            ff = np.abs(ff)  
-            ff = ff*2/sampRat/T 
-            QuantitativeLog.objects.filter(user_id=userId, url=domain).update(abnormalTimeProbability=np.std(ff))
+        result = {}
+        for domain, dataframe in df.groupby(df[4]):
+            domainRes = []
+            for deviceAttr in DEVICE_LIST:
+                reg = r"&" + deviceAttr + "=(.+?)&"
+                for args in dataframe[6].values:
+#                    print (re.findall(r"&ver=(.+?)&", args))
+                    matchRes = re.findall(reg, args)
+                    if (len(matchRes) > 0):
+                       domainRes.extend(matchRes) 
+            if (len(set(domainRes)) > 1):
+                result[domain] = len(set(domainRes)) / len(domainRes)
+            else:
+                result[domain] = 0 
+            QuantitativeLog.objects.filter(user_id=userId, url=domain).update(sameArgsDiversity=round(result[domain], 4))
+
+    else:
+        df = pd.read_csv(filename, header=None, encoding='gbk', index_col=7, low_memory=False)
+        df.index = pd.to_datetime(df.index)
+        if (args[1] == 'first'):
+            ts = df[4]
+            dateMin = ts.index.min()
+            dateMax = ts.index.max()
+            # group by domain name
+            findBestInterval(dateMin, dateMax, ts.groupby(df[4]), userId)
+        elif (args[1] == 'second'):
+            urlArgs = df.loc[:, [6]].groupby(df[4])
+            startCalUrlArgsEntropy(urlArgs, userId)
+        elif (args[1] == 'psd'):
+            ts = df[4]
+            dateMin = ts.index.min()
+            dateMax = ts.index.max()
+            dates = pd.date_range(dateMin, dateMax, freq='10T')
+            newTs = pd.Series(0, index=dates)
+
+            for domain, groupDf in ts.groupby(df[4]):
+                groupDf = pd.concat([newTs, groupDf.apply(revalue)]).resample('10T').sum()
+                hour = groupDf.index.hour
+                groupDf = groupDf[(1 <= hour) & (hour <= 5)]
+                sampRat = len(groupDf) 
+                T = 1 
+                f = np.linspace(0, sampRat, T*sampRat, endpoint=False)  
+                ff = np.fft.fft(groupDf)  
+                ff = np.abs(ff)  
+                ff = ff*2/sampRat/T 
+                QuantitativeLog.objects.filter(user_id=userId, url=domain).update(abnormalTimeProbability=np.std(ff))
+
+        elif (args[1] == 'webClassify'):
+            ts = df[8]
+            for domain, groupDf in ts.groupby(df[4]):
+                classifies = groupDf.values.tolist()
+                dict = {x: classifies.count(x) for x in classifies}
+                total = 0
+                wwwCount = 0
+                for classify, val in dict.items():
+                    if (classify == 'WWW'):
+                        wwwCount += val
+                    total += val
+                    QuantitativeLog.objects.filter(user_id=userId, url=domain).update(webClassify=round(val / total, 4))
 
 def startRun():
-    os.chdir(csv_file_path)
-    files = os.listdir(csv_file_path)
-    for filename in files:
-        readCsv(filename)
+    args = sys.argv
+    if (args[1] == 'gmm'):
+        startGMM()
+    else:
+        os.chdir(csv_file_path)
+        files = os.listdir(csv_file_path)
+        for filename in files:
+            readCsv(filename)
+
+def startGMM():
+   # QuantitativeLog.objects.filter(user_id=userId, url=domain).update(webClassify=round(val / total, 4))
+   obs = np.concatenate((np.random.randn(2, 1), 10 + np.random.randn(3, 1)))
+   clf = GMM(n_components=2).fit(obs).predict([[-1], [8]])
+   print (obs, clf)
 
 def calEuclidean(A, B):
     A.shape = (A.shape[0], 1)
