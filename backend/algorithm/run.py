@@ -1,3 +1,7 @@
 import handleCSV
+import fetchData
+import preprocessing
 
-handleCSV.startRun()
+fetchData.startRun()
+#preprocessing.startRun()
+#handleCSV.startRun()
