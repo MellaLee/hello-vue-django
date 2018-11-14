@@ -1,8 +1,6 @@
-# hello-vue + Django
+# 基于URL识别恶意访问系统的设计与实现 
 
-This is a boilerplate project for using vuejs with Django.
-
-### Features
+### 一、Features
 
 * Django backend in `./backend`
 * vuejs (v2) frontend in `./frontend`
@@ -10,18 +8,20 @@ This is a boilerplate project for using vuejs with Django.
 * eslint linter integration
 * Makefile to make your life easy
 
+### 二、相关命令 
+#### 1. 安装项目
+    make dev: 安装依赖
+    make migrate: 创建数据库
 
-### Development environment setup
+#### 2. 运行项目 
+    make run命令分解：
+    1) npm run dev: 在8001端口启动vue
+    2) python ./manage runserver: 在8000端口运行django
+    3) 访问http://localhost:8000/
+    //TODO1:目前make run命令执行了前一半就卡住了，2)中的命令无法被执行
 
-These steps will install all required dependencies including development ones, run migrations and start dev server.
 
-```bash
-make dev
-make migrate
-make run
-```
-
-### Deployment
+### 三、部署 
 
 These steps will install production dependencies and build vuejs application to `static/dist` folder.
 
@@ -30,11 +30,13 @@ make prod
 make build
 ```
 
-### 运行方法——2018.06.04
-1. 网页上传csv文件，文件命名方式为“name-学号”
-2. backend/algorithm下执行：
-    python run.py first 跑第一个特征
-	python run.py second 跑第二个特征
+### 四、其他 
+
+#### 1. 运行方法——2018.06.04
+    1) 网页上传csv文件，文件命名方式为“name-学号”
+    2) backend/algorithm下执行：
+        python run.py first 跑第一个特征
+        python run.py second 跑第二个特征
 
 ### Be aware
 
