@@ -2,6 +2,7 @@ import os
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from django.core import serializers
 
 import re
 import json
@@ -10,6 +11,11 @@ import numpy as np
 from backendModels.models import UrlLog, User, QuantitativeLog
 
 import pandas as pd
+
+http_response_obj = {}
+http_response_obj['code'] = 0
+http_response_obj['data'] = None 
+http_response_obj['msg'] = ''
 
 def index(request):
     return render(request, 'index.html')
@@ -67,3 +73,26 @@ def chartShow(request):
        }
         
     return render(request, 'chart.html', {'series': series})
+
+
+@csrf_exempt
+def fetchUrlList(request):
+    data = {}
+    series = QuantitativeLog.objects
+    data['total'] = series.count()
+    intParams = changeRequestIntoInt(request)
+    start = ( intParams['page'] - 1 ) * intParams['size']
+    end = intParams['page'] * intParams['size']
+    data['list'] = list(series.all()[start:end].values('user', 'url', 'similarEuc', 'urlArgsEntropy', 'abnormalTimeProbability', 'sameArgsDiversity', 'webClassify'))
+    http_response_obj['data'] = data
+    return JsonResponse(http_response_obj)
+
+def changeRequestIntoInt(request):
+    result = {}
+    params = request.GET
+    for item in params:
+        if params[item] is not None and params[item].isnumeric():
+            result[item] = int(params[item])
+        else:
+            result[item] = params[item]
+    return result

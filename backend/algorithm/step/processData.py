@@ -5,7 +5,7 @@ import Levenshtein
 import numpy as np
 import pandas as pd
 import scipy.stats as ss
-import testStationarity as draw
+from step import testStationarity as draw
 from scipy.spatial import distance
 import scipy.cluster.hierarchy as sch
 # just for importing models of django

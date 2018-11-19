@@ -23,7 +23,8 @@ urlpatterns = [
     url(r'^admin/', admin.site.urls),
     url(r'^$', backend.views.index),
     url(r'^api/upload/url_log', backend.views.uploadUrlLog),
-    url(r'^api/chart/show', backend.views.chartShow)
+    url(r'^api/chart/show', backend.views.chartShow),
+    url(r'^api/fetch/url_list', backend.views.fetchUrlList)
 ]
 
 if settings.DEBUG:

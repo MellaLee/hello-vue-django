@@ -1,3 +1,4 @@
+# 拿到设备类型参数列表
 import os
 import re
 import pandas as pd
