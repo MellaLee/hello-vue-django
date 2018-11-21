@@ -1,7 +1,7 @@
 #2. 处理数据, 量化特征
 import re
 import json
-import Levenshtein
+# import Levenshtein
 import numpy as np
 import pandas as pd
 import scipy.stats as ss
@@ -17,13 +17,19 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
 django.setup()
 from backendModels.models import User, QuantitativeLog
 
+env = 'lab'
 date = '2018.06.04'
 safeCheckTimes = 4 
-csv_file_path = r'D:\GraduationThesis\graduation-code\hello-vue-django\backend/algorithm/download/originData/' + date  
+if env == 'lab':
+    csv_file_path = "E:/stacieli/GraduationThesis/hello-vue-django/backend/algorithm/download/originData/" + date  
+else:
+    csv_file_path = r'D:\GraduationThesis\graduation-code\hello-vue-django\backend/algorithm/download/originData/' + date  
 
 def readCsv(fileName, userId):
     df = pd.read_csv(fileName, header=None, encoding='gbk', index_col=5, low_memory=False)
     df.index = pd.to_datetime(df.index)
+    print (df)
+    return
     result = {}
     #1. cal '时间窗口内域名访问相似度' 
     result = calSimilarEuc(df, userId)

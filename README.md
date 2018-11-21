@@ -38,6 +38,12 @@ make build
         python run.py first 跑第一个特征
         python run.py second 跑第二个特征
 
+#### 2. 安装步骤—2018.11.20
+    1) 安装MinGW，重命名“mingw32-make”为make
+    2) 安装anaconda
+    3) make dev安装依赖
+    4) 安装Python依赖包：
+
 ### Be aware
 
 For the sake of simplicity Django config is contained within its own backend app. In real world setting you would

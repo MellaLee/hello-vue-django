@@ -104,3 +104,6 @@ else if (use_hot_reload)
     module.exports.plugins.push(new webpack.HotModuleReplacementPlugin());
     module.exports.plugins.push(new webpack.NoEmitOnErrorsPlugin()); // don't reload if there is an error
 }
+
+// for removing deprecation of "parseQuery()"
+process.traceDeprecation = true;

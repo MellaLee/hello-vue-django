@@ -5,9 +5,9 @@ from step import fetchData, processData, modelData
 #fetchData.startRun()
 
 # 特征提取 
-#processData.startRun()
+processData.startRun()
 
 # 聚类标记
-modelData.startRun()
+#modelData.startRun()
 
 #preprocessing.startRun()
