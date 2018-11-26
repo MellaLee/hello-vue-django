@@ -1,7 +1,7 @@
 #2. 处理数据, 量化特征
 import re
 import json
-# import Levenshtein
+import Levenshtein
 import numpy as np
 import pandas as pd
 import scipy.stats as ss
@@ -15,7 +15,10 @@ import django
 sys.path.append("../..")
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
 django.setup()
-from backendModels.models import User, QuantitativeLog
+from backendModels.models import User, QuantitativeLog, UrlLog
+
+# For test
+import time
 
 env = 'lab'
 date = '2018.06.04'
@@ -28,13 +31,12 @@ else:
 def readCsv(fileName, userId):
     df = pd.read_csv(fileName, header=None, encoding='gbk', index_col=5, low_memory=False)
     df.index = pd.to_datetime(df.index)
-    print (df)
-    return
     result = {}
-    #1. cal '时间窗口内域名访问相似度' 
-    result = calSimilarEuc(df, userId)
-    #2. cal 'URL参数信息熵'
-    result = calUrlArgsEntropy(df.loc[:, [6]].groupby(df[2]), userId, result)
+    label_result  = {}
+    #1. cal '时间窗口内域名访问相似度'同时拿到用于数据标注的访问次数序列
+    result, label_result = calSimilarEucAndGetLabelTimes(df, userId)
+    #2. cal 'URL参数信息熵'和所有访问参数的列表
+    result = calUrlArgsEntropy(df.loc[:, [4]].groupby(df[2]), userId, result, label_result)
     #3. cal '异常时间频发度' 
     result = calAbnormalTimeFrequ(df[2], df, result)
     #4. cal 'uri同一参数一致性'
@@ -42,8 +44,11 @@ def readCsv(fileName, userId):
     #5. cal '网页分类'
     result = calWebClassify(df[6], result, df)
     quantitativeLogList = []
+    urlLogList = []
+
     for res in result:
         log = result[res]
+        urlLog = label_result[res]
         quantitativeLogList.append(QuantitativeLog(
             url=log['url'],
             user_id = userId,
@@ -53,8 +58,15 @@ def readCsv(fileName, userId):
             sameArgsDiversity=log['sameArgsDiversity'],
             webClassify=log['webClassify']
         ))
+        urlLogList.append(UrlLog(
+            url=log['url'],
+            urlArgs=urlLog['urlArgs'],
+            quantitative_id=1,
+            times=urlLog['times']
+        ))
     for i in range(0, len(quantitativeLogList), 200):
         QuantitativeLog.objects.bulk_create(quantitativeLogList[i:i + 200])
+        UrlLog.objects.bulk_create(urlLogList[i:i + 200])
 
 def calWebClassify(ts, result, df):
     for domain, groupDf in ts.groupby(df[2]):
@@ -125,10 +137,11 @@ def calAbnormalTimeFrequ(ts, df, result):
                 result[domain]['abnormalTimeProbability']=np.std(ff)
     return result
 
-def calUrlArgsEntropy(urlArgs, userId, result):
+def calUrlArgsEntropy(urlArgs, userId, result, label_result):
     for domain, args in urlArgs:
         if domain in result:
-            argsValues = args.values
+            argsValues = args.values 
+            label_result[domain]['urlArgs'] = args[4].tolist()
             lastArgs = 0
             total = 0
             for args in argsValues:
@@ -137,6 +150,7 @@ def calUrlArgsEntropy(urlArgs, userId, result):
                 else:
                     lastArgs = args[0]
             # calculate entropy
+            # 层次聚类
             hierarchyDisMat = sch.distance.pdist(argsValues, lambda str1, str2:  1 - similarUrlAgrs(str1[0], str2[0]))
             if (len(hierarchyDisMat) == 0):
                 method2 = 0
@@ -168,27 +182,27 @@ def similarUrlAgrs(str1, str2):
     ld=Levenshtein.distance(str1, str2)
     return (lcs / (ld + lcs))
 
-def calSimilarEuc(df, userId):
+def calSimilarEucAndGetLabelTimes(df, userId):
     ts = df[2]
     dateMin = ts.index.min()
     dateMax = ts.index.max()
     # group by domain name
-    similarEuc = findBestInterval(dateMin, dateMax, ts.groupby(df[2]), userId)
-    return similarEuc
+    similarEuc, label_times = findBestInterval(dateMin, dateMax, ts.groupby(df[2]), userId)
+    return similarEuc, label_times
 
 def findBestInterval(dateMin, dateMax, groups, userId):
     oldRatio = 1 
     interval = 0
     result = {} 
     for i in range(10, 20, 10):
-        notStat, totalSize, similarEuc = startQuantitative(
+        notStat, totalSize, similarEuc, label_times = startQuantitative(
             i, dateMin, dateMax, groups, userId)
         if (notStat / totalSize < oldRatio):
             oldRatio = notStat / totalSize
             interval = i
             result = similarEuc
         print("failed:", i, oldRatio)
-    return result
+    return result, label_times
 
 def startQuantitative(i, dateMin, dateMax, groups, userId):
     dates = pd.date_range(dateMin, dateMax, freq=str(i) + 'T')
@@ -196,6 +210,7 @@ def startQuantitative(i, dateMin, dateMax, groups, userId):
     notStat = 0
     totalSize = 0 
     quantitativeLogDict = {} 
+    label_times = {} 
     for domain, groupDf in groups:
         # get a timeSeries every $interval following the [min, max]
         groupDf = pd.concat([newTs, groupDf.apply(revalue)]).resample(str(i) + 'T').sum()
@@ -205,6 +220,9 @@ def startQuantitative(i, dateMin, dateMax, groups, userId):
             if (ifStat is False):
                 notStat += 1
             else:
+                label_times[domain] = {
+                    'times': groupDf.values.tolist()
+                }
                 oldValue = -1
                 eucDistance = 0
                 for value in groupDf:
@@ -218,7 +236,7 @@ def startQuantitative(i, dateMin, dateMax, groups, userId):
                     'user_id': userId,
                     'similarEuc': eucDistance,
                 }
-    return notStat, totalSize, quantitativeLogDict
+    return notStat, totalSize, quantitativeLogDict, label_times
 
 def revalue(x):
     return 1
