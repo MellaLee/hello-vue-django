@@ -15,4 +15,6 @@ const Api = {};
 
 Api.fetchUrlList = para => sendRequest($api['url-list'], para);
 
+Api.fetchLabelList = para => sendRequest($api['label-list'], para);
+
 export default Api;

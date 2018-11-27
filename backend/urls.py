@@ -24,7 +24,8 @@ urlpatterns = [
     url(r'^$', backend.views.index),
     url(r'^api/upload/url_log', backend.views.uploadUrlLog),
     url(r'^api/chart/show', backend.views.chartShow),
-    url(r'^api/fetch/url_list', backend.views.fetchUrlList)
+    url(r'^api/fetch/url_list', backend.views.fetchUrlList),
+    url(r'^api/fetch/label_list', backend.views.fetchLabelList)
 ]
 
 if settings.DEBUG:
