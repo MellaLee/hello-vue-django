@@ -21,6 +21,7 @@ from backendModels.models import User, QuantitativeLog, UrlLog
 import time
 import math
 
+safeVisitTimes = 100000
 env = 'lab'
 date = '2018.06.04'
 safeCheckTimes = 4 
@@ -37,13 +38,18 @@ def readCsv(fileName, userId):
 	#1. cal '时间窗口内域名访问相似度'同时拿到用于数据标注的访问次数序列
 	result, label_result = calSimilarEucAndGetLabelTimes(df, userId)
 	#2. cal 'URL参数信息熵'和所有访问参数的列表
+	print ('entropy')
 	result = calUrlArgsEntropy(df.loc[:, [4]].groupby(df[2]), userId, result, label_result)
 	#3. cal '异常时间频发度' 
+	print ('time')
 	result = calAbnormalTimeFrequ(df[2], df, result)
+	print ('uri')
 	#4. cal 'uri同一参数一致性'
 	result = calSameArgsDiversity(fileName, result)
+	print ('diversity')
 	#5. cal '网页分类'
 	result = calWebClassify(df[6], result, df)
+	print ('store into sql')
 	quantitativeLogList = []
 	urlLogList = []
 
@@ -134,7 +140,6 @@ def calAbnormalTimeFrequ(ts, df, result):
 				ff = np.fft.fft(groupDf)  
 				ff = np.abs(ff)  
 				ff = ff*2/sampRat/T 
-			#QuantitativeLog.objects.filter(user_id=userId, url=domain).update()
 				result[domain]['abnormalTimeProbability']=np.std(ff)
 	return result
 
@@ -142,12 +147,16 @@ def calUrlArgsEntropy(urlArgs, userId, result, label_result):
 	for domain, args in urlArgs:
 		if domain in result:
 			argsValues = args[4].tolist() 
-			label_result[domain]['urlArgs'] = argsValues 
-			print (domain, len(argsValues))
-			entropyTotal = 0
-			for i in argsValues:
-				entropyTotal += calEntropy(i) 
-			result[domain]['urlArgsEntropy'] = entropyTotal / len(argsValues) 
+			if len(argsValues) < safeVisitTimes:
+				label_result[domain]['urlArgs'] = argsValues 
+				print (domain, len(argsValues))
+				entropyTotal = 0
+				num = 0
+				for i in argsValues:
+					entropyTotal += calEntropy(i) 
+				result[domain]['urlArgsEntropy'] = entropyTotal / len(argsValues) 
+			else: 
+				del result[domain]
 	return result
 
 def calEntropy(string):
@@ -156,7 +165,7 @@ def calEntropy(string):
 	letter = [0] * 26
 	string = string.lower()
 	for ele in string:
-		if ele.isalpha():
+		if ele.isalpha() and ord(ele) <= 122:
 			letter[ord(ele) - ord('a')] += 1
 			sumt += 1
 	if (sumt > 0):

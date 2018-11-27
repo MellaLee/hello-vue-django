@@ -22,7 +22,7 @@
 										<v-url-list></v-url-list>	
 									</div>
 									<div v-else-if="active === 2">
-										<v-cluster></v-cluster>	
+										<v-label></v-label>	
 									</div>
 								</el-main>
 								<el-footer>
@@ -45,7 +45,7 @@
 <script>
 import $uploadLog from './mods/components/uploadLog.vue';
 import $urlList from './mods/components/urlList.vue';
-import $cluster from './mods/components/cluster.vue';
+import $label from './mods/components/label.vue';
 
 export default {
 	name: 'app',
@@ -55,7 +55,7 @@ export default {
 			stepName: [
 				{ title: '数据获取', description: '获取与清洗日志' }, 
 				{ title: '特征提取', description: '提取并量化特征'}, 
-				{ title: '聚类标记', description: '聚类标记'},
+				{ title: '数据标记', description: '人工标记'},
 				{ title: '半监督学习', description: '上传未标记训练集合并进行预测'}],
 		}
 	},
@@ -63,7 +63,7 @@ export default {
 	components: {
 		'v-upload-log': $uploadLog,
 		'v-url-list': $urlList,
-		'v-cluster': $cluster
+		'v-label': $label
 	},
 
 	methods: {
