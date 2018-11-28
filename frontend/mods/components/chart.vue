@@ -1,5 +1,5 @@
 <template>
-	<div class="c-chart" style="{height: 400px}">
+	<div class="c-chart" style="height: 300px; width: 630px">
 		<div class="chart"></div>
 	</div>
 </template>
@@ -10,9 +10,8 @@ export default {
 	name: 'chart',
 
 	props: {
-		title: String,
 		type: String,
-		options: Object,
+		options: [Array, String],
 		initOptions: {
 			type: Object,
 			default() {
@@ -50,14 +49,13 @@ export default {
 		setChart() {
 			let	options = null;
 			if ($chart[this.type] !== undefined) {
-				options = $chart[this.type](this.options, this.title);
+				options = $chart[this.type](this.options);
 			}
 			this.chart.setOption(options, true);
 		}
 	},
 
 	mounted() {
-		console.log(this.options, this.title);
 		if (!this.chart && this.options) {
 			this.initChart();
 		}

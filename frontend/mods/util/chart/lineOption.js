@@ -1,23 +1,22 @@
-const lineOption = (options, title) => {
+const lineOption = options => {
 	let setoption = {};
-	setoption.title = {
-		text: title
-	};
-	setoption.legend = {
-		right: '5%',
-		data: [] 
+	setoption.grid = {
+		left: 50,
+		top: 10
 	};
  	setoption.xAxis = {
-        type: 'category',
-        data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+		type: 'category',
     };
     setoption.yAxis = {
         type: 'value'
     };	
 	setoption.series = [{
-        data: [820, 932, 901, 934, 1290, 1330, 1320],
+        data: options,
         type: 'line'
-    }];
+	}];
+	setoption.tooltip = [{
+		trigger: 'axis'
+	}];
 	return setoption;
 };
 

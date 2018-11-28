@@ -74,7 +74,6 @@ def chartShow(request):
         
     return render(request, 'chart.html', {'series': series})
 
-
 @csrf_exempt
 def fetchUrlList(request):
     data = {}
@@ -96,3 +95,15 @@ def changeRequestIntoInt(request):
         else:
             result[item] = params[item]
     return result
+
+@csrf_exempt
+def fetchLabelList(request):
+    data = {}
+    series = UrlLog.objects
+    data['total'] = series.count()
+    intParams = changeRequestIntoInt(request)
+    start = ( intParams['page'] - 1 ) * intParams['size']
+    end = intParams['page'] * intParams['size']
+    data['list'] = list(series.all()[start:end].values('url', 'id', 'times', 'urlArgs'))
+    http_response_obj['data'] = data
+    return JsonResponse(http_response_obj)
