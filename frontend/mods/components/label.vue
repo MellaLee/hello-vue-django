@@ -7,9 +7,10 @@
 					<v-chart type="line" :options="scope.row.times"></v-chart>
 				</template>
 			</el-table-column>
-			<el-table-column label="标记">
+			<el-table-column label="查看和标记">
 				<template slot-scope="scope">
-					<el-switch v-model="scope.row.label"></el-switch>
+					<el-button type="primary" icon="el-icon-view" circle @click="handleViewArgs(scope.row.urlArgs)"></el-button>
+					<el-switch v-model="scope.row.label" style="margin-left:5px"></el-switch>
 				</template>
 			</el-table-column>
 		</el-table>
@@ -23,6 +24,16 @@
 		  layout="sizes, prev, pager, next"
 		  :total="logTotal"
 		></el-pagination>
+		<el-dialog
+			title="Url参数"
+			width="800"
+			:visible.sync="dialogVisible">
+			<span>{{ dialogText }}</span>
+			<span slot="footer" class="dialog-footer">
+				<el-button @click="dialogVisible = false">取 消</el-button>
+				<el-button type="primary" @click="dialogVisible = false">确 定</el-button>
+			</span>
+		</el-dialog>
 	</div>
 </template>
 
@@ -45,7 +56,9 @@ export default {
 			}],
 			logTotal: 0,
 			size: 10,
-			page: 1
+			page: 1,
+			dialogVisible: false,
+			dialogText: ''
 		}
 	},
 
@@ -71,6 +84,10 @@ export default {
 		},
 		handlePageChange() {
 			this.fetchLabel();
+		},
+		handleViewArgs(args) {
+			this.dialogText = args;
+			this.dialogVisible = true;
 		}
 	}
 }
