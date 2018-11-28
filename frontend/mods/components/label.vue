@@ -28,7 +28,7 @@
 			title="Url参数"
 			width="800"
 			:visible.sync="dialogVisible">
-			<span>{{ dialogText }}</span>
+			<div style="word-break:break-word">{{ dialogText.slice(1, -1).split(',').join('\n\n') }}</div>
 			<span slot="footer" class="dialog-footer">
 				<el-button @click="dialogVisible = false">取 消</el-button>
 				<el-button type="primary" @click="dialogVisible = false">确 定</el-button>
@@ -58,7 +58,7 @@ export default {
 			size: 10,
 			page: 1,
 			dialogVisible: false,
-			dialogText: ''
+			dialogText: '' 
 		}
 	},
 
