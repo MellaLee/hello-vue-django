@@ -14,9 +14,11 @@ class  QuantitativeLog(models.Model):
     abnormalTimeProbability = models.FloatField(default=0x00)
     sameArgsDiversity = models.FloatField(default=0x00)
     webClassify = models.FloatField(default=0x00)
+    predict_label = models.IntegerField(default=0x00)
+    label = models.IntegerField(default=0x00)
 
 class UrlLog(models.Model):
-    quantitative = models.ForeignKey(QuantitativeLog, on_delete=models.CASCADE, default=3)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
     url = models.CharField(default=0x02, max_length = 100)
     urlArgs = models.TextField(null=True)
     times = models.TextField(null=True)

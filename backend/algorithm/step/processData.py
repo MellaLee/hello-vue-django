@@ -8,6 +8,7 @@ import scipy.stats as ss
 from step import testStationarity as draw
 from scipy.spatial import distance
 import scipy.cluster.hierarchy as sch
+import shutil
 # just for importing models of django
 import os
 import sys
@@ -27,6 +28,7 @@ date = '2018.06.04'
 safeCheckTimes = 4 
 if env == 'lab':
 	csv_file_path = "E:/stacieli/GraduationThesis/hello-vue-django/backend/algorithm/download/originData/" + date  
+	move_file_path = "E:/stacieli/GraduationThesis/hello-vue-django/backend/algorithm/download/originData/done"  
 else:
 	csv_file_path = r'D:\GraduationThesis\graduation-code\hello-vue-django\backend/algorithm/download/originData/' + date  
 
@@ -63,12 +65,14 @@ def readCsv(fileName, userId):
 			urlArgsEntropy=log['urlArgsEntropy'],
 			abnormalTimeProbability=log['abnormalTimeProbability'],
 			sameArgsDiversity=log['sameArgsDiversity'],
-			webClassify=log['webClassify']
+			webClassify=log['webClassify'],
+			predict_label=0,
+			label=0
 		))
 		urlLogList.append(UrlLog(
 			url=log['url'],
 			urlArgs=urlLog['urlArgs'],
-			quantitative_id=1,
+			user_id = userId,
 			times=urlLog['times']
 		))
 	for i in range(0, len(quantitativeLogList), 200):
@@ -281,3 +285,4 @@ def startRun():
 		if (created):
 			user.save()
 		readCsv(fileName, user.id)
+		shutil.move(fileName, move_file_path)    
