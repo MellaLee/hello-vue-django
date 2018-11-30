@@ -232,7 +232,7 @@ def findBestInterval(dateMin, dateMax, groups, userId):
 	for i in range(10, 20, 10):
 		notStat, totalSize, similarEuc, label_times = startQuantitative(
 			i, dateMin, dateMax, groups, userId)
-		if (notStat / totalSize < oldRatio):
+		if (totalSize > 0 and (notStat / totalSize < oldRatio)):
 			oldRatio = notStat / totalSize
 			interval = i
 			result = similarEuc

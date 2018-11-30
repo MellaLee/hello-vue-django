@@ -22,6 +22,8 @@
 		  :page-sizes="[10, 20, 50, 100]"
 		  :page-size="size"
 		  layout="sizes, prev, pager, next"
+		  next-text="保存并下一页"
+		  @next-click="handleNextClick"
 		  :total="logTotal"
 		></el-pagination>
 		<el-dialog
@@ -51,6 +53,7 @@ export default {
 		return {
 			labelData: [{
 				url: '',
+				urlArgs: '',
 				label: false,
 				times: []
 			}],
@@ -58,7 +61,7 @@ export default {
 			size: 10,
 			page: 1,
 			dialogVisible: false,
-			dialogText: '' 
+			dialogText: ''
 		}
 	},
 
@@ -73,7 +76,11 @@ export default {
 				size: this.size
 			};
 			$api.fetchLabelList(params).then(res => {
-				this.labelData = res.list;
+				let temp = res.list;
+				temp.forEach(element => {
+					element['label'] = false;
+				});
+				this.labelData = temp;
 				this.logTotal = res.total;
 			});
 		},
@@ -88,6 +95,13 @@ export default {
 		handleViewArgs(args) {
 			this.dialogText = args;
 			this.dialogVisible = true;
+		},
+		handleNextClick(){
+			$api.saveLabel({label: this.labelData}).then(res => {
+				if (res == 'ok') {
+					this.$message('标记成功, 请开始第' + this.page + '页');
+				}
+			});
 		}
 	}
 }

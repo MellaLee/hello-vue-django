@@ -6,6 +6,7 @@ class User(models.Model):
     userNo = models.IntegerField(default=0x01)
     ip = models.CharField(null=True, max_length = 100)
 
+# label为0表示善意访问
 class  QuantitativeLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     url = models.CharField(default=0x02, max_length = 100)
@@ -17,11 +18,13 @@ class  QuantitativeLog(models.Model):
     predict_label = models.IntegerField(default=0x00)
     label = models.IntegerField(default=0x00)
 
+# mark为1表示需要标记
 class UrlLog(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     url = models.CharField(default=0x02, max_length = 100)
     urlArgs = models.TextField(null=True)
     times = models.TextField(null=True)
+    mark = models.IntegerField(default=0x01)
 
 class UrlArgsTestMethod(models.Model):
     url = models.CharField(default=0x02, max_length = 100)

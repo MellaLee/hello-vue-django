@@ -4,6 +4,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core import serializers
 
+import ast
 import re
 import json
 import time, datetime 
@@ -99,11 +100,38 @@ def changeRequestIntoInt(request):
 @csrf_exempt
 def fetchLabelList(request):
     data = {}
-    series = UrlLog.objects
-    data['total'] = series.count()
+    series = UrlLog.objects.filter(mark=1)
+    # data['total'] = series.count() 
+    data['total'] = 30894 
     intParams = changeRequestIntoInt(request)
     start = ( intParams['page'] - 1 ) * intParams['size']
     end = intParams['page'] * intParams['size']
-    data['list'] = list(series.all()[start:end].values('url', 'id', 'times', 'urlArgs'))
+    data['list'] = list(series[start:end].values('url', 'user_id', 'times', 'urlArgs', 'id'))
     http_response_obj['data'] = data
+    return JsonResponse(http_response_obj)
+
+# 自动标记函数，默认访问次数总和<10的访问为善意访问，mark置为0
+def autoMark():
+    allModel = UrlLog.objects.filter(mark=1)
+    for i in range(1, 100):
+        model = allModel[((i - 1) * 10000) : (10000 * i)]
+        for item in model:
+            times = ast.literal_eval(item.times) 
+            total = 0
+            for i in times:
+                if (i > 0):
+                    total+=1
+            if (total < 10):
+                item.mark = 0
+                item.save()
+                print (item.id)
+
+@csrf_exempt
+def saveLabel(request):
+    if request.method == 'POST':
+        body = json.loads(request.body)
+        for item in body['label']:
+            QuantitativeLog.objects.filter(user_id=item['user_id'], url=item['url']).update(label=item['label'])
+            UrlLog.objects.filter(id=item['id']).update(mark=0)
+    http_response_obj['data'] = 'ok'
     return JsonResponse(http_response_obj)
