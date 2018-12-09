@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+result = {}
 # 构建示例数据集
 from sklearn.datasets.samples_generator import make_blobs
 X, y_true = make_blobs(n_samples=10000, centers=2, cluster_std=0.60, random_state=0, n_features=5)
@@ -8,23 +9,34 @@ X, y_true = make_blobs(n_samples=10000, centers=2, cluster_std=0.60, random_stat
 
 # gmm
 from sklearn.mixture import GaussianMixture as GMM
-gmm = GMM(n_components=2).fit(X)
+gmm = GMM(n_components=2, covariance_type='spherical').fit(X)
 # covariance_type即通过EM算法估算参数时使用的协方差类型，默认full
-labels = gmm.predict(X)
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-xs = X[:, 0]
-ys = X[:, 1]
-zs = X[:, 2]
-data_points = [(x, y, z) for x, y, z in zip(xs, ys, zs)]
+result['gmm'] = gmm.predict(X)
 
-ss = X[:, 3]
-colors = ['red' if v == 1 else 'yellow' for v in labels]
+# kmeans
+from sklearn.cluster import KMeans
+from scipy.spatial.distance import cdist
+result['kmeans'] = KMeans(n_clusters=2).fit_predict(X)
 
-i = 0
-for data, color, size in zip(data_points, colors, ss):
-	i+=1
-	x, y, z = data
-	ax.scatter(x, y, z, c=color, s=size)
-print (i)
-plt.show()
+# 性能指标
+from sklearn import metrics
+
+def output(type, y_pred): 
+	print (type)
+	print("accuracy_score:", metrics.accuracy_score(y_true, y_pred))
+	print("precision_score:", metrics.precision_score(y_true, y_pred))
+	print("recall_score:", metrics.recall_score(y_true, y_pred))
+	fpr, tpr, thresholds = roc_curve()
+
+for itemIndex in result:
+	output(itemIndex, result[itemIndex])
+
+# fig = plt.figure()
+# ax = fig.add_subplot(111, projection="3d")
+# 
+# size = X[:, 3]
+# fill_colors = ['#FF9999' if v == 1 else '#FFE888' for v in labels]
+# edge_colors = ['red' if v == 1 else 'orange' for v in labels]
+# ax.scatter(X[:, 0], X[:, 1], X[:, 2], s=size, alpha=0.4, linewidths=X[:, 4], color=fill_colors, edgecolors=edge_colors)
+# 
+# plt.show()
