@@ -6,7 +6,10 @@ from sklearn import preprocessing
 from scipy import linalg
 import itertools
 # import calDB
-from sklearn.cluster import KMeans
+from sklearn.model_selection import StratifiedKFold
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+# from sklearn.cluster import KMeans
 # just for importing models of django
 import os
 import sys
@@ -18,161 +21,129 @@ django.setup()
 from backendModels.models import User, QuantitativeLog
 from backend.algorithm.visualize import pltCharacter
 
+colors = ['navy', 'darkorange']
+labels = ['善意访问', '恶意访问']
+mpl.rcParams['font.sans-serif'] = ['SimHei'] #指定默认字体   
+mpl.rcParams['axes.unicode_minus'] = False #解决保存图像是负号'-'显示为方块的问题
+def make_ellipses(gmm, ax):
+	for n, color in enumerate(colors):
+		if gmm.covariance_type == 'full':
+			covariances = gmm.covariances_[n][:2, :2]
+		elif gmm.covariance_type == 'tied':
+			covariances = gmm.covariances_[:2, :2]
+		elif gmm.covariance_type == 'diag':
+			covariances = np.diag(gmm.covariances_[n][:2])
+		elif gmm.covariance_type == 'spherical':
+			covariances = np.eye(gmm.means_.shape[1]) * gmm.covariances_[n]
+		v, w = np.linalg.eigh(covariances)
+		u = w[0] / np.linalg.norm(w[0])
+		angle = np.arctan2(u[1], u[0])
+		angle = 180 * angle / np.pi  # convert to degrees
+		v = 2. * np.sqrt(2.) * np.sqrt(v)
+		ell = mpl.patches.Ellipse(gmm.means_[n, :2], v[0], v[1],
+								  180 + angle, color=color)
+		ell.set_clip_box(ax.bbox)
+		ell.set_alpha(0.5)
+		ax.add_artist(ell)
+		ax.set_aspect('equal', 'datalim')
+
+def fetchClusterData():
+	goodlog = QuantitativeLog.objects.filter(label=0)
+	badlog = QuantitativeLog.objects.filter(label=1)
+	logTotal = len(goodlog) + len(badlog)
+
+	X_goodlog = [list(x) for x in goodlog.values_list('similarEuc', 'urlArgsEntropy', 'abnormalTimeProbability', 'sameArgsDiversity', 'webClassify')]
+	Y_goodlog =[x[0] for x in goodlog.values_list('label')]
+	id_goodlog = [x[0] for x in goodlog.values_list('id')] 
+
+	X_badlog = [list(x) for x in badlog.values_list('similarEuc', 'urlArgsEntropy', 'abnormalTimeProbability', 'sameArgsDiversity', 'webClassify')]
+	Y_badlog = [x[0] for x in badlog.values_list('label')]
+	id_badlog = [x[0] for x in badlog.values_list('id')] 
+
+	each_type_num = int(logTotal * 0.6 * 0.8 / 2)
+	X_cluster = X_goodlog[:each_type_num] + X_badlog[:each_type_num]
+	Y_cluster = Y_goodlog[:each_type_num] + Y_badlog[:each_type_num]
+	id_log = id_goodlog[:each_type_num] + id_badlog[:each_type_num]
+	return X_cluster, Y_cluster, id_log
+
+def storeIntoSql(id, cluster_label):
+	allModel = QuantitativeLog.objects.filter(pk__in=id)
+	i = 0
+	for index, model in enumerate(allModel):
+		i += 1
+		if (i % 10000 == 0):
+			print (i)
+		model.cluster_label = cluster_label[index]
+		model.save()
+		
+# 数据拆分比例说明
+# 训练：验证：测试 = 6：2：2
+# 如果数据量为a
+# 则聚类可用数据为0.6a,拆分比为0.36a:0.12a:0.12a
+# svm数据比为0.6a:0.2a:0.2a
 def startRun():
-    quantitativeLogList = list(QuantitativeLog.objects.all().values_list('similarEuc', 'urlArgsEntropy', 'abnormalTimeProbability',
-        'sameArgsDiversity', 'webClassify'))
+	# 获取数据
+	X_cluster, Y_cluster, id_log = fetchClusterData()
 
-    # 数组元素的数据类型
-    X = np.array(quantitativeLogList, dtype=np.float64)
-    #min_max_scaler = preprocessing.MinMaxScaler()
-    #X_minMax = min_max_scaler.fit_transform(X)
-    #X = preprocessing.scale(X)
+	# 标准化数据 
+	X_cluster = np.array(X_cluster, dtype=np.float64)
+	Y_cluster = np.array(Y_cluster, dtype=np.float64)
+	for index, x in enumerate(X_cluster):
+		X_cluster[index] = preprocessing.scale(x)
 
-    # k均值聚类
-    estimator = KMeans(n_clusters=2)#构造聚类器
-    estimator.fit(X)#聚类
-    label_pred = estimator.labels_ #获取聚类标签
-    cluster1 = []
-    cluster2 = []
-    j = 0
+	# 拆分数据
+	skf = StratifiedKFold(n_splits=4)
+	train_index, test_index = next(iter(skf.split(X_cluster, Y_cluster)))
+	x_train = X_cluster[train_index]
+	y_train = Y_cluster[train_index]
+	x_test = X_cluster[test_index]
+	y_test = Y_cluster[test_index]
 
-    for i in label_pred:
-        if (i == 1):
-            cluster1.append(X[j][4])
-        else:
-            cluster2.append(-X[j][4])
-        j += 1
+	# Gmm model
+	cv_types = ['spherical', 'tied', 'diag', 'full']
+	cv_types_name = {'spherical':'球面协方差矩阵', 'tied': '相同的完全协方差矩阵', 'diag': '对角协方差矩阵', 'full':'完全协方差矩阵'}
+	n_classes = 2
+	estimators = dict((cov_type, GMM(n_components=n_classes, 
+		covariance_type=cov_type, max_iter=20, random_state=0))
+		for cov_type in cv_types)
 
-    ##########  画图可选 ########
-    # pltCharacter.plot(cluster1, cluster2, 'a')
-    ##########  end     ########
-    # Gmm model
-    return
-    lowest_bic = np.infty
-    bic = []
-    n_components_range = range(2, 6)
-    cv_types = ['spherical', 'tied', 'diag', 'full']
-    # 协方差类型与分组个数的影响
-    for cv_type in cv_types:
-        for n_components in n_components_range:
-            # Fit a Gaussian mixture with EM
-            gmm = GMM(n_components=n_components, covariance_type=cv_type)
-            gmm.fit(X)
-            bic.append(gmm.bic(X))
-            clf = gmm
-            Y_ = clf.predict(X)
-            if bic[-1] < lowest_bic:
-                lowest_bic = bic[-1]
-                best_gmm = gmm
+	n_estimators = len(estimators)
+	# figsize（宽，高）
+	# plt.subplots_adjust(bottom=.01, top=0.95, hspace=.15, wspace=.05,
+	#				left=.01, right=.99)
 
-    bic = np.array(bic)
-    color_iter = itertools.cycle(['navy', 'turquoise', 'cornflowerblue', 'darkorange'])
-    clf = best_gmm
-    bars = []
+	# 遍历索引序列
+	for index, (name, estimator) in enumerate(estimators.items()):
+		estimator.means_init = np.array([x_train[y_train == i].mean(axis=0)
+										for i in range(n_classes)])
+		estimator.fit(x_train)
+		#subplot(行数， 列数， 每行的第几个图像)
+		plt.figure(index + 1, figsize=(3, 3))
+		h = plt.subplot(1, 1, 1)
+		make_ellipses(estimator, h)
 
-    # Plot the BIC scores
-    # 分成2X1,占用第一块
-    temp = bic[3]
-    bic[3] = bic[0]
-    bic[0] = temp
+		for n, color in enumerate(colors):
+			data = X_cluster[Y_cluster == n]
+			plt.scatter(data[:, 0], data[:, 1], s=0.8, color=color, label=labels[n])
 
-    temp = bic[1]
-    bic[1] = bic[2]
-    bic[2] = temp
+		# Plot the test data with crosses
+		for n, color in enumerate(colors):
+			data = x_test[y_test == n]
+			plt.scatter(data[:, 0], data[:, 1], marker='x', color=color)
 
-    temp = bic[7]
-    bic[7] = bic[4]
-    bic[4] = temp
+		y_train_pred = estimator.predict(x_train)
+		train_accuracy = np.mean(y_train_pred.ravel() == y_train.ravel()) * 100
+		plt.text(0.05, 0.9, '训练集准确率: %.1f' % train_accuracy, transform=h.transAxes)
 
-    temp = bic[6]
-    bic[6] = bic[5]
-    bic[5] = temp
+		y_test_pred = estimator.predict(x_test)
+		test_accuracy = np.mean(y_test_pred.ravel() == y_test.ravel()) * 100
+		plt.text(0.05, 0.8, '测试集准确率: %.1f' % test_accuracy, transform=h.transAxes)
+		plt.xticks(())
+		plt.yticks(())
+		plt.title(cv_types_name[name])
+		plt.legend(scatterpoints=1, loc='lower right', prop=dict(size=12))
+		#if (name == 'diag'):
+		#	storeIntoSql(id_log, np.append(y_train_pred, y_test_pred))
+		print (name + ' done')
 
-    temp = bic[12]
-    bic[12] = bic[15]
-    bic[15] = temp
-
-    temp = bic[13]
-    bic[13] = bic[14]
-    bic[14] = temp
-
-    spl = plt.subplot(2, 1, 1)
-    hatches = ['o', '*', '.', '//']
-    print(mpl.matplotlib_fname()) 
-    mpl.rcParams['font.sans-serif']=['SimSun'] #指定默认字体 SimHei为黑体
-    mpl.rcParams['axes.unicode_minus']=False #用来正常显示负号
-    for i, (cv_type, color) in enumerate(zip(cv_types, color_iter)):
-        xpos = np.array(n_components_range) + .2 * (i - 2)
-        bars.append(plt.bar(xpos, bic[i * len(n_components_range):
-                                    (i + 1) * len(n_components_range)],
-                            width=.2, ec='black', ls="-", color='white',hatch=hatches[i]))
-    # xticks:人为设置坐标轴的刻度显示的值
-    plt.xticks(n_components_range)
-    # ylim: 调整y轴范围
-    plt.ylim([bic.min() * 1.01 - .01 * bic.max(), bic.max()])
-    #plt.title('BIC score per model')
-    xpos = np.mod(bic.argmin(), len(n_components_range)) + .65 +\
-        .2 * np.floor(bic.argmin() / len(n_components_range))
-    # text 在某位置添加文字
-    plt.text(xpos + 0.9, bic.min() * 0.97 + .03 * bic.max(), '*', fontsize=14)
-    spl.set_xlabel('聚类数目')
-    spl.set_ylabel('BIC分数')
-    box = spl.get_position()
-    #spl.set_position([box.x0, box.y0, box.width , box.height* 0.8])
-    # ['球面协方差矩阵', '相同的完全协方差矩阵', '对角协方差矩阵', '完全协方差矩阵']
-    spl.legend([b[0] for b in bars], ['球面协方差矩阵', '相同的完全协方差矩阵', '对角协方差矩阵', '完全协方差矩阵'], bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2, mode="expand", borderaxespad=0.5)
-
-    # Plot the winner
-    #splot = plt.subplot(2, 1, 2)
-    #Y_ = clf.predict(X)
-    ##res = {}
-    #cluster1 = []
-    #cluster2 = []
-    ## j = 0
-    ## for i in Y_:
-    ##     if (i == 0):
-    ##         cluster1.append(X[j])
-    ##     else:
-    ##         cluster2.append(X[j])
-    ##     j += 1
-    ## print(calDB.dbi(np.array(cluster1), np.array(cluster2)))
-    ## return
-    ##    res[i] = res.get(i, 0) + 1
-    ##print (Y_[35], Y_[89])
-    ##print (Y_[95], Y_[174])
-    ##print([k for k in res.keys()])
-    ##print([v for v in res.values()])
-    #for i, (mean, cov, color) in enumerate(zip(clf.means_, clf.covariances_, color_iter)):
-    #    if (i==0):
-    #        color = 'red'
-    #    else:
-    #        color = 'blue'
-    ##    # 求解矩阵特征方程
-    ##    cov = cov.reshape((5, 5))
-    ## 特征值,特征向量
-    ##    w, u, v = linalg.svd(cov)
-    #    v, w = linalg.eigh(cov)
-    ##    # 矩阵Y_中是否有对应元素与i相等
-    #    if not np.any(Y_ == i):
-    #        continue
-    ##    # 画离散点
-    #    plt.scatter(X[Y_ == i, 0], X[Y_ == i, 1], .8, color=color)
-
-    #    # Plot an ellipse to show the Gaussian component
-    #    angle = np.arctan2(w[0][1], w[0][0])
-    #    angle = 180. * angle / np.pi  # convert to degrees
-    #    v = 2. * np.sqrt(2.) * np.sqrt(v)
-    #    # 绘制椭圆
-    #    ell = mpl.patches.Ellipse(mean, v[0], v[1], 180. + angle, color=color)
-    #    ell.set_clip_box(splot.bbox)
-    #    ell.set_alpha(.5)
-    #    splot.add_artist(ell)
-
-    #axes = plt.gca()
-    #axes.set_xlim([-0.5,1.5])
-    #axes.set_ylim([0,2])
-    #plt.xticks(())
-    #plt.yticks(())
-    #plt.title('Selected GMM: full model, 2 components')
-    plt.subplots_adjust(hspace=.35, bottom=.02)
-    plt.show()
+	plt.show()
