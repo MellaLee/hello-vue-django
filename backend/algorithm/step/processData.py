@@ -140,7 +140,6 @@ def calAbnormalTimeFrequ(ts, df, result):
 				result[domain]['abnormalTimeProbability']=0
 			else:
 				T = 1 
-				f = np.linspace(0, sampRat, T*sampRat, endpoint=False)  
 				ff = np.fft.fft(groupDf)  
 				ff = np.abs(ff)  
 				ff = ff*2/sampRat/T 

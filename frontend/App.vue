@@ -1,44 +1,36 @@
 <template>
 	<div id="app">
-		<el-row>
-			<el-col :span="18" :offset="3">
-				<el-container style="border: 1px solid #eee">
-					<el-header>
-						<h3 style="text-align: center">URL恶意访问识别系统</h3>
-					</el-header>
-
-					<el-main>
-						<el-steps :active="active" finish-status="success" align-center>
-							<el-step v-for="(obj, index) in stepName" :key="index" :title="obj.title" :description="obj.description"></el-step>
-						</el-steps>
-
-						<el-card style="margin-top:12px">
-							<el-container>
-								<el-main>
-									<div v-if="active === 0">
-										<v-upload-log></v-upload-log>	
-									</div>
-									<div v-else-if="active === 1">
-										<v-url-list></v-url-list>	
-									</div>
-									<div v-else-if="active === 2">
-										<v-label></v-label>	
-									</div>
-								</el-main>
-								<el-footer>
-									<el-button-group style="float:right">
-										<el-button :disabled="!active" icon="el-icon-arrow-left" style="margin: 12px 1px" type="primary" @click="back">上一步</el-button>
-										<el-button :disabled="active == 3" style="margin: 12px 1px" type="primary" @click="nextStep">
-											下一步<i class="el-icon-arrow-right el-icon--right"></i>
-										</el-button>
-									</el-button-group>
-								</el-footer>
-								</el-container>
-						</el-card>
-					</el-main>
-				</el-container>
-			</el-col>
-		</el-row>
+		<div class="header">
+			<v-header @change="changeNavShow"></v-header>
+		</div>
+		<div class="nav" v-if="navShow">
+			<v-navside></v-navside>
+		</div>
+		<div class="container" :class="{sidebar: navShow}">
+			<v-breadcrumb></v-breadcrumb>
+			<el-card>
+				<router-view></router-view>
+			</el-card>
+		</div>
+		<el-footer :class="{sidebar: navShow}">
+			<el-button-group style="float:right">
+				<el-button v-if="stepNum" :disabled="active == 1" icon="el-icon-arrow-left" type="primary" @click="back">上一步</el-button>
+				<el-button v-if="stepNum" :disabled="active == stepNum" type="primary" @click="nextStep">
+					下一步<i class="el-icon-arrow-right el-icon--right"></i>
+				</el-button>
+				<el-button v-if="manualMarkButton" :disabled="active != stepNum" type="primary" @click="manualMark" class="button-manual-mark">
+					人工辅助标记
+				</el-button>
+				<el-button v-if="manualMarkButton" class="button-or" plain type="primary">OR</el-button>
+				<el-button v-if="nextMoudleButton" :disabled="active != stepNum && stepNum != 0" type="primary" @click="nextMoudle">
+					下一模块<i class="el-icon-arrow-right el-icon--right"></i>
+				</el-button>
+				<el-button v-else :disabled="active != stepNum && stepNum != 0" type="primary" @click="startCheck">
+					{{ oneButtonText }}
+					<i class="iconfont icon-jiance el-icon-right"></i>
+				</el-button>
+			</el-button-group>
+		</el-footer>
 	</div>
 </template>
 
@@ -46,39 +38,139 @@
 import $uploadLog from './mods/components/uploadLog.vue';
 import $urlList from './mods/components/urlList.vue';
 import $label from './mods/components/label.vue';
+import $navSide from './mods/components/ui/navside.vue';
+import $header from './mods/components/ui/header.vue';
+import $breadcrumb from './mods/components/ui/breadcrumb.vue';
 
 export default {
 	name: 'app',
 	data() {
 		return {
-			active: 0,
-			stepName: [
-				{ title: '数据获取', description: '获取与清洗日志' }, 
-				{ title: '特征提取', description: '提取并量化特征'}, 
-				{ title: '数据标记', description: '人工标记'},
-				{ title: '半监督学习', description: '上传未标记训练集合并进行预测'}],
+			active: 1,
+			navShow: true,
+			nextMoudleButton: true,
+			stepPath: {
+				'/train/upload': 'feature',
+				'/train/feature': 'cluster',
+				'/train/cluster': 'semiSupervised',
+			},
+			manualMarkButton: false,
+			oneButtonText: '开始检测',
 		}
 	},
 
 	components: {
 		'v-upload-log': $uploadLog,
 		'v-url-list': $urlList,
-		'v-label': $label
+		'v-label': $label,
+		'v-navside': $navSide,
+		'v-header': $header,
+		'v-breadcrumb': $breadcrumb
+	},
+
+	watch:{
+		$route(to, from) {
+			if (to.path.indexOf('identify') > 0) {
+				this.nextMoudleButton = false;
+			}
+			if (to.path.indexOf('cluster') > 0 && to.path.indexOf('label') < 0) {
+				this.manualMarkButton = true;
+			} else {
+				this.manualMarkButton = false;
+			}
+			if (to.path.indexOf('check/label') > 0) {
+				this.oneButtonText = '一键优化检测模型';
+			}
+			if (to.path.indexOf('semiSupervised') > 0) {
+				this.oneButtonText = '开始识别';
+			}
+			if (to.path.indexOf('check') > 0) {
+				this.oneButtonText = '修改类别标记';
+			}
+		}
+	},
+
+	computed: {
+		stepNum() {
+			return this.$store.state.step.stepNum;
+		}
 	},
 
 	methods: {
 		back(index) {
-			if (this.active-- < 0) this.active = 0;
+			this.active--;
+			this.$store.dispatch('minusStep');
 		},
 		nextStep(index) {
 			this.active ++;
-			if (this.active > 2) {
+			this.$store.dispatch('addStep');
+			if (this.active > this.stepNum) {
 				this.active = 0;
 			}
+		},
+		changeNavShow() {
+			this.navShow = !this.navShow;
+		},
+		nextMoudle() {
+			this.$router.push(this.stepPath[this.$route.path]);
+		},
+		startCheck() {
+			// TODO
+		},
+		manualMark() {
+			this.$router.push('/train/cluster/label');
 		}
 	},
 }
 </script>
 
-<style>
+<style lang="less">
+body {
+	margin: 0px;
+	background: #efefef;
+	#app {
+		.header {
+			position: fixed;
+			top: 0;
+		}
+		.nav {
+			z-index: 100;
+		}
+		.container {
+			margin-left: 0px;
+			padding: 32px;
+			margin-top: 60px;
+			&.sidebar {
+				margin-left: 280px;
+			}
+			.container-main {
+				margin-top: 30px;
+			}
+		}
+		.el-footer {
+			background: #444;
+			position: fixed;
+			bottom: 0;
+			right: 0;
+			left: 0;
+			&.sidebar {
+				left: 280px;
+			}
+			.el-button {
+				margin: 12px 1px;
+			}
+			.button-manual-mark {
+				margin-left: 20px;
+			}
+			.button-or {
+				margin: 12px 0px;
+				border-radius: 35px;
+			}
+			.icon-jiance {
+				font-size: 14px;
+				margin-left: 5px;
+			}
+		}
+	}
+}
 </style>

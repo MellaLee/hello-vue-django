@@ -2,15 +2,22 @@
 	<div class="c-label">
 		<el-table :data="labelData">
 			<el-table-column prop="url" label="Url"></el-table-column>
-			<el-table-column width="650" label="访问次数">
+			<el-table-column width="850" label="访问次数">
 				<template slot-scope="scope">
 					<v-chart type="line" :options="scope.row.times"></v-chart>
 				</template>
 			</el-table-column>
-			<el-table-column label="查看和标记">
+			<el-table-column label="访问参数">
 				<template slot-scope="scope">
-					<el-button type="primary" icon="el-icon-view" circle @click="handleViewArgs(scope.row.urlArgs)"></el-button>
-					<el-switch v-model="scope.row.label" style="margin-left:5px"></el-switch>
+					<el-button type="primary" icon="el-icon-view" @click="handleViewArgs(scope.row.urlArgs)">查看参数列表</el-button>
+				</template>
+			</el-table-column>
+			<el-table-column label="当前标记" align="center">
+				<template slot-scope="scope">
+					<el-switch v-model="scope.row.label"
+						active-text="恶意访问"
+						inactive-text="善意访问"
+						style="margin-left:5px"></el-switch>
 				</template>
 			</el-table-column>
 		</el-table>
@@ -67,6 +74,7 @@ export default {
 
 	created() {
 		this.fetchLabel();
+		this.$store.dispatch('setStepNum', 0);
 	},
 
 	methods: {

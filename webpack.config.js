@@ -52,7 +52,7 @@ module.exports = {
             },
             {
                 test: /\.(css|less)$/,
-                loader: "vue-style-loader!css-loader",
+                loader: "vue-style-loader!css-loader!less-loader",
             },
             {
                 test:  /\.(woff2?|eot|ttf|otf)(\?.*)?$/,

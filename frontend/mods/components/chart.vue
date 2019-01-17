@@ -1,5 +1,5 @@
 <template>
-	<div class="c-chart" style="height: 300px; width: 630px">
+	<div class="c-chart" style="height: 300px; width: 650px">
 		<div class="chart"></div>
 	</div>
 </template>

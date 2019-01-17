@@ -3,6 +3,9 @@ import ElementUI from 'element-ui';
 import VueResource from 'vue-resource'
 import 'element-ui/lib/theme-chalk/index.css';
 import App from './App.vue';
+import $router from './router.js';
+import $store from './mods/store';
+import '../static/font/iconfont.css';
 
 Vue.use(ElementUI);
 Vue.use(VueResource);
@@ -27,5 +30,7 @@ Vue.http.interceptors.push(function (request, next) {
   
 new Vue({
   el: '#app',
+  router: $router,
+  store: $store,
   render: h => h(App)
 });
